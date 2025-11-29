@@ -34,3 +34,6 @@ Thumbs.db
 
 # Config with personal OC code
 .claude/skills/beopsuny/config/settings.yaml
+
+# Built skill zip (contains personal OC code)
+beopsuny-skill.zip

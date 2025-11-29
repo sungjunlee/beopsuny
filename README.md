@@ -1,6 +1,6 @@
-# Beopsuny (법순이)
+# Beopsuny (법수니)
 
-한국 법령 리서치를 도와주는 Claude Code skill입니다.
+한국 법령 리서치를 도와주는 Claude skill입니다.
 
 국가법령정보센터 Open API를 활용하여 법령, 판례, 행정규칙, 자치법규 등을 검색하고 분석합니다.
 
@@ -14,11 +14,26 @@
 
 ## 설치
 
-### 1. Claude Code Skill로 사용
+### 방법 1: Claude Desktop용 (권장)
+
+빌드 스크립트로 개인 설정이 포함된 zip 파일을 생성합니다.
+
+**macOS/Linux:**
+```bash
+./build.sh
+```
+
+**Windows:**
+```
+build.bat 더블클릭
+```
+
+OC 코드 입력 후 `beopsuny-skill.zip`이 생성됩니다.
+Claude Desktop의 Skills 메뉴에서 이 zip 파일을 추가하세요.
+
+### 방법 2: Claude Code Skill로 사용
 
 `.claude/skills/beopsuny/` 폴더를 프로젝트에 복사합니다.
-
-### 2. API 설정
 
 ```bash
 cd .claude/skills/beopsuny/config
