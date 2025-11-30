@@ -180,20 +180,34 @@ python scripts/fetch_bill.py votes --bill-no 2205704    # 의안번호로 표결
 
 #### 조사 방법
 
-**1. 웹검색 (즉시 활용)**
+**1. fetch_policy.py 스크립트 활용 ⭐ RECOMMENDED**
+```bash
+# RSS 보도자료 수집
+python scripts/fetch_policy.py rss ftc                    # 공정위 보도자료
+python scripts/fetch_policy.py rss ftc --keyword 과징금   # 키워드 필터
+
+# 법령해석례 검색
+python scripts/fetch_policy.py interpret "해고"          # 해고 관련 해석
+python scripts/fetch_policy.py interpret "임금"          # 임금 관련 해석
+
+# 정책 동향 종합 요약
+python scripts/fetch_policy.py summary --days 7          # 최근 7일 요약
+```
+
+**2. 웹검색 (즉시 활용)**
 ```
 "공정거래위원회 제재" 2024 2025
 "고용노동부 근로기준법 위반" 과태료
 "금융위원회 제재조치" 최근
 ```
 
-**2. 공개 API 활용 (심층 조사)**
+**3. 공개 API/웹사이트 (심층 조사)**
 
-| 데이터 | data.go.kr 코드 | 용도 |
-|--------|-----------------|------|
-| 공정위 의결서 | 15103301 | 제재 결정문 |
-| 고용노동부 행정해석 | 15140236 | 법령 해석례 |
-| 입법예고 | 15058407 | 법령 개정 동향 |
+| 데이터 | 출처 | 용도 |
+|--------|------|------|
+| 공정위 의결서 | data.go.kr/15103301 | 제재 결정문 (파일) |
+| 법령해석례 | law.go.kr | 법제처 해석 사례 |
+| 입법예고 | opinion.lawmaking.go.kr | 법령 개정 동향 |
 
 #### 실무 적용 예시
 

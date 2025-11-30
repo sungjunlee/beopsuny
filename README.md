@@ -82,7 +82,22 @@ python scripts/fetch_law.py search "과징금 부과기준" --type admrul
 **주요 행정규칙 예시:**
 - 개인정보 처리방침 → "개인정보 보호법 위반에 대한 과징금 부과기준" (고시)
 - 금융규제 → "금융회사의 정보처리 및 전산설비 위탁에 관한 규정" (고시)
-- 의료 → "의료기관 인증기준" (고시)
+
+### 정책 동향 파악 ⭐ NEW
+
+> 법령 조문보다 **정부의 실제 집행 스탠스**가 실무에 더 중요합니다.
+
+```bash
+# 부처별 보도자료 수집
+python scripts/fetch_policy.py rss ftc                   # 공정거래위원회
+python scripts/fetch_policy.py rss moel --keyword 임금   # 고용노동부 + 필터
+
+# 법령해석례 검색
+python scripts/fetch_policy.py interpret "해고"
+
+# 정책 동향 종합 요약
+python scripts/fetch_policy.py summary --days 7
+```
 
 ### 국회 의안 조회
 
@@ -150,6 +165,7 @@ git clone https://github.com/your-username/your-repo.git
 │   ├── scripts/
 │   │   ├── fetch_law.py         # 법령/판례 검색
 │   │   ├── fetch_bill.py        # 국회 의안 조회
+│   │   ├── fetch_policy.py      # 정책 동향 수집 ⭐ NEW
 │   │   ├── parse_law.py         # 법령 파싱
 │   │   └── gen_link.py          # 링크 생성
 │   ├── config/

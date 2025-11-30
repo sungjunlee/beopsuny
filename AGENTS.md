@@ -82,13 +82,27 @@ python .claude/skills/beopsuny/scripts/fetch_law.py search "인증기준" --type
 - 정책브리핑(korea.kr)에서 각 부처 RSS 피드 제공
 - 최근 보도자료로 정책 방향 파악
 
-#### 3. 공개 API 활용 (심층 조사)
+#### 3. fetch_policy.py 스크립트 활용 ⭐ NEW
+
+```bash
+# RSS 보도자료 수집
+python .claude/skills/beopsuny/scripts/fetch_policy.py rss ftc          # 공정위
+python .claude/skills/beopsuny/scripts/fetch_policy.py rss ftc --keyword 과징금
+
+# 법령해석례 검색
+python .claude/skills/beopsuny/scripts/fetch_policy.py interpret "해고"
+
+# 정책 동향 종합 요약
+python .claude/skills/beopsuny/scripts/fetch_policy.py summary --days 7
+```
+
+#### 4. 공개 API 활용 (심층 조사)
 
 | 데이터 | API (data.go.kr) | 용도 |
 |--------|------------------|------|
-| 공정위 의결서 | /data/15103301 | 실제 제재 결정문 |
-| 고용노동부 행정해석 | /data/15140236 | 법령 해석 사례 |
-| 입법예고 | /data/15058407 | 법령 개정 동향 |
+| 공정위 의결서 | /data/15103301 | 실제 제재 결정문 (파일데이터) |
+| 법령해석례 | law.go.kr target=expc | 법제처 해석 사례 |
+| 입법예고 | opinion.lawmaking.go.kr | 법령 개정 동향 |
 
 ### 실무 적용 예시
 
