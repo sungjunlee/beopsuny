@@ -10,12 +10,15 @@ env/
 .env
 
 # Data files (can be re-downloaded)
+.claude/skills/beopsuny/data/raw/**/*.xml
 .claude/skills/beopsuny/data/raw/*.xml
 .claude/skills/beopsuny/data/parsed/*.md
+.claude/skills/beopsuny/data/bills/*.json
 
 # But keep directory structure
 !.claude/skills/beopsuny/data/raw/.gitkeep
 !.claude/skills/beopsuny/data/parsed/.gitkeep
+!.claude/skills/beopsuny/data/bills/.gitkeep
 
 # IDE
 .idea/

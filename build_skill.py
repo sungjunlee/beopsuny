@@ -11,13 +11,15 @@ import shutil
 from pathlib import Path
 
 
-def get_oc_code() -> str:
-    """OC 코드를 입력받습니다."""
+def get_api_keys() -> tuple[str, str]:
+    """API 키들을 입력받습니다."""
     print("=" * 50)
     print("법수니 (beopsuny) 스킬 빌드")
     print("=" * 50)
     print()
-    print("국가법령정보 공동활용 API의 OC 코드가 필요합니다.")
+
+    # 1. 국가법령정보 OC 코드
+    print("[1/2] 국가법령정보 공동활용 API")
     print("아직 없다면 https://open.law.go.kr 에서 회원가입 후")
     print("OpenAPI 신청을 하세요. (무료)")
     print()
@@ -28,18 +30,38 @@ def get_oc_code() -> str:
     while True:
         oc_code = input("OC 코드를 입력하세요: ").strip()
         if oc_code:
-            return oc_code
+            break
         print("OC 코드를 입력해주세요.")
 
+    print()
 
-def create_settings_yaml(oc_code: str) -> str:
+    # 2. 열린국회정보 API 키
+    print("[2/2] 열린국회정보 API (국회 의안 조회용)")
+    print("아직 없다면 https://open.assembly.go.kr 에서 회원가입 후")
+    print("인증키를 신청하세요. (무료)")
+    print()
+    print("(선택사항 - 국회 의안 조회 기능을 사용하지 않으면 Enter로 건너뛰기)")
+    print()
+
+    assembly_api_key = input("열린국회정보 API 키를 입력하세요: ").strip()
+
+    return oc_code, assembly_api_key
+
+
+def create_settings_yaml(oc_code: str, assembly_api_key: str = "") -> str:
     """settings.yaml 내용을 생성합니다."""
+    assembly_line = f'assembly_api_key: "{assembly_api_key}"' if assembly_api_key else '# assembly_api_key: ""  # 열린국회정보 API 키 (https://open.assembly.go.kr)'
+
     return f'''# Korean Law API Configuration
 # 국가법령정보 공동활용 API 설정
 
 # OC Code (Open API Code)
 # open.law.go.kr에서 발급받은 ID (이메일의 @ 앞부분)
 oc_code: "{oc_code}"
+
+# 열린국회정보 API Key (국회 의안 조회용)
+# open.assembly.go.kr에서 발급받은 인증키
+{assembly_line}
 
 # API Settings
 api:
@@ -58,7 +80,7 @@ targets:
 '''
 
 
-def build_zip(oc_code: str, output_path: Path) -> None:
+def build_zip(oc_code: str, assembly_api_key: str, output_path: Path) -> None:
     """스킬 zip 파일을 생성합니다."""
     script_dir = Path(__file__).parent
     skill_dir = script_dir / ".claude" / "skills" / "beopsuny"
@@ -73,8 +95,8 @@ def build_zip(oc_code: str, output_path: Path) -> None:
         if skill_md.exists():
             zf.write(skill_md, "beopsuny/SKILL.md")
 
-        # config/settings.yaml (OC 코드 주입)
-        settings_content = create_settings_yaml(oc_code)
+        # config/settings.yaml (API 키 주입)
+        settings_content = create_settings_yaml(oc_code, assembly_api_key)
         zf.writestr("beopsuny/config/settings.yaml", settings_content)
 
         # scripts/*.py
@@ -86,6 +108,7 @@ def build_zip(oc_code: str, output_path: Path) -> None:
         # data 디렉토리 구조 (빈 디렉토리용 .gitkeep)
         zf.writestr("beopsuny/data/raw/.gitkeep", "")
         zf.writestr("beopsuny/data/parsed/.gitkeep", "")
+        zf.writestr("beopsuny/data/bills/.gitkeep", "")
 
     print()
     print(f"✓ 스킬 zip 파일이 생성되었습니다: {output_path}")
@@ -100,19 +123,32 @@ def build_zip(oc_code: str, output_path: Path) -> None:
 
 
 def main():
-    # 명령줄 인자로 OC 코드 받기
+    # 명령줄 인자로 API 키 받기
     oc_code = None
-    for i, arg in enumerate(sys.argv[1:], 1):
-        if arg in ("--oc-code", "-o") and i < len(sys.argv) - 1:
-            oc_code = sys.argv[i + 1]
-            break
+    assembly_api_key = None
+
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("--oc-code", "-o") and i + 1 < len(args):
+            oc_code = args[i + 1]
+            i += 2
         elif arg.startswith("--oc-code="):
             oc_code = arg.split("=", 1)[1]
-            break
+            i += 1
+        elif arg in ("--assembly-key", "-a") and i + 1 < len(args):
+            assembly_api_key = args[i + 1]
+            i += 2
+        elif arg.startswith("--assembly-key="):
+            assembly_api_key = arg.split("=", 1)[1]
+            i += 1
+        else:
+            i += 1
 
     # 인자 없으면 대화형으로 입력
     if not oc_code:
-        oc_code = get_oc_code()
+        oc_code, assembly_api_key = get_api_keys()
 
     # 출력 경로
     output_path = Path(__file__).parent / "beopsuny-skill.zip"
@@ -124,7 +160,7 @@ def main():
             print("취소되었습니다.")
             sys.exit(0)
 
-    build_zip(oc_code, output_path)
+    build_zip(oc_code, assembly_api_key or "", output_path)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 ---
 name: beopsuny
-description: 한국 법령/판례를 검색, 다운로드, 분석합니다. 법률 조문 확인, 판례 검색, 개정 확인, 시행령/시행규칙 조회 시 자동 활성화됩니다. Searches Korean laws, cases, and regulations via National Law Information Center API.
+description: 법순이 - 한국 법령/판례 검색, 다운로드, 분석 도우미. 법률 조문 확인, 판례 검색, 개정 확인, 시행령/시행규칙, 국회 의안 조회 시 자동 활성화. Korean law research assistant via National Law Information Center & Assembly APIs.
 ---
 
-# Beopsuny (법순이) - 한국 법령 리서치 도우미
+# 법순이 (Beopsuny) - 한국 법령 리서치 도우미
 
 국가법령정보센터 Open API를 활용하여 한국 법령과 판례를 검색, 다운로드, 분석하는 Claude Code skill입니다.
 
@@ -33,6 +33,15 @@ python scripts/fetch_law.py search "개인정보" --type expc   # 법령해석�
 python scripts/fetch_law.py search "기본권" --type detc     # 헌재결정례
 ```
 
+### 1-1. 정확한 법령명 검색 (exact) ⭐ NEW
+```bash
+python scripts/fetch_law.py exact "상법"        # 정확히 "상법"만 검색
+python scripts/fetch_law.py exact "민법"        # 관련 시행령/시행규칙도 표시
+python scripts/fetch_law.py exact "근로기준법"
+```
+> ⚠️ **주의**: `search "상법"`은 "보상법", "손해배상법" 등 부분 일치 결과도 반환합니다.
+> 정확한 법령명을 찾으려면 `exact` 명령을 사용하세요.
+
 ### 2. 판례 검색 (cases)
 ```bash
 python scripts/fetch_law.py cases "불법행위 손해배상"
@@ -49,11 +58,15 @@ python scripts/fetch_law.py fetch --case "2022다12345"         # 판례 다운�
 python scripts/fetch_law.py fetch --name "민법" --force        # 캐시 무시
 ```
 
-### 4. 최근 개정 법령 조회 (recent)
+### 4. 최근 개정 법령 조회 (recent) ⭐ IMPROVED
 ```bash
-python scripts/fetch_law.py recent --days 30
-python scripts/fetch_law.py recent --from 20250101 --to 20251231
+python scripts/fetch_law.py recent --days 30                    # 최근 30일 시행 법령
+python scripts/fetch_law.py recent --from 20251101 --to 20251130  # 11월 시행 법령
+python scripts/fetch_law.py recent --from 20251101 --to 20251130 --date-type anc  # 11월 공포 법령
 ```
+> **날짜 기준 옵션**:
+> - `--date-type ef` (기본): 시행일 기준
+> - `--date-type anc`: 공포일 기준
 
 ### 5. 법령 파싱 (parse)
 ```bash
@@ -74,6 +87,34 @@ python scripts/gen_link.py search "개인정보보호법"
 python scripts/gen_link.py history "민법" --id 001706    # 연혁법령 링크
 python scripts/gen_link.py decree "개인정보보호법"        # 시행령/시행규칙 링크
 ```
+
+### 8. 국회 의안 조회 (bills) ⭐ NEW
+열린국회정보 API를 활용하여 국회에 발의된 법률안을 검색합니다.
+
+```bash
+# 의안 검색
+python scripts/fetch_bill.py search "상법"              # 상법 관련 의안 검색
+python scripts/fetch_bill.py search "상법" --age 22     # 22대 국회 (기본값)
+python scripts/fetch_bill.py search "상법" --display 20 # 20건 표시
+
+# 최근 발의 법률안
+python scripts/fetch_bill.py recent --days 30           # 최근 30일 발의
+python scripts/fetch_bill.py recent --keyword "상법"    # 상법 키워드 필터
+
+# 계류 의안 조회
+python scripts/fetch_bill.py pending                    # 전체 계류 의안
+python scripts/fetch_bill.py pending --keyword "상법"   # 상법 관련 계류 의안
+
+# 특정 법령 개정안 추적
+python scripts/fetch_bill.py track "상법"               # 상법 개정안 추적
+python scripts/fetch_bill.py track "민법"               # 민법 개정안 추적
+
+# 의안 표결현황
+python scripts/fetch_bill.py votes --bill-no 2205704    # 의안번호로 표결 조회
+```
+
+> **API 키 설정**: `config/settings.yaml`에 `assembly_api_key` 필요
+> - 발급: https://open.assembly.go.kr 회원가입 후 인증키 신청
 
 ## 검색 대상 코드 (target)
 
@@ -147,10 +188,30 @@ python3 .claude/skills/beopsuny/scripts/fetch_law.py search "민법"
 ## Instructions for Claude
 
 ### 법령 관련 질문 처리
-1. `scripts/fetch_law.py`로 법령 데이터 조회/다운로드
-2. 이미 다운로드된 파일이 있으면 재사용 (Glob으로 `data/raw/` 확인)
-3. 조문 인용 시 `scripts/gen_link.py`로 검증 가능한 링크 생성
-4. **시행일자 반드시 확인** - 미시행 법령은 명확히 표시
+1. **정확한 법령명 검색** 시 `exact` 명령 사용 (예: "상법", "민법")
+   - `search`는 부분 일치 검색 → "상법" 검색 시 "보상법"도 포함됨
+   - `exact`는 정확히 일치하는 법령 + 관련 시행령/시행규칙 표시
+2. **날짜 범위 검색** 시 `recent --from --to` 사용
+   - `--date-type ef`: 시행일 기준 (기본값)
+   - `--date-type anc`: 공포일 기준
+3. 이미 다운로드된 파일이 있으면 재사용 (Glob으로 `data/raw/` 확인)
+4. 조문 인용 시 `scripts/gen_link.py`로 검증 가능한 링크 생성
+5. **시행일자 반드시 확인** - 미시행 법령은 명확히 표시
+
+### API 제한사항 인지
+- 국가법령정보센터 API는 **부분 문자열 검색**만 지원
+- "상법" 검색 → "보**상법**", "손해배**상법**" 등 모두 반환됨
+- 정확한 법령을 찾으려면 `exact` 명령 또는 결과에서 수동 필터링 필요
+- 최근 개정 법령은 API에 반영까지 시간이 걸릴 수 있음 → WebSearch 병행 권장
+
+### 국회 의안 관련 질문 처리
+1. **법령 개정안 발의 현황** 확인 요청 시 `scripts/fetch_bill.py track` 사용
+   - 예: "상법 개정안이 발의되었나요?" → `track "상법"`
+2. **최근 발의된 법률안** 확인 시 `scripts/fetch_bill.py recent` 사용
+3. **계류 중인 의안** 확인 시 `scripts/fetch_bill.py pending` 사용
+4. 의안번호로 국회 의안정보시스템 링크 생성:
+   - `https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_{의안번호}`
+5. 법령 API에서 최신 개정이 확인되지 않을 경우, 국회 의안 API로 발의/진행 상태 확인
 
 ### 판례 관련 질문 처리
 1. `scripts/fetch_law.py cases` 또는 `search --type prec`로 검색
@@ -180,11 +241,26 @@ python3 .claude/skills/beopsuny/scripts/fetch_law.py search "민법"
 법률 분석 답변 마지막에 다음 문구 포함:
 > ⚠️ **참고**: 이 정보는 일반적인 법률 정보 제공 목적이며, 구체적인 법률 문제는 변호사와 상담하시기 바랍니다.
 
+## Claude Desktop 네트워크 설정
+
+Claude Desktop/Web에서 이 skill을 사용하려면 **네트워크 egress 설정**에서 다음 도메인을 허용해야 합니다:
+
+1. **Settings > Capabilities** 이동
+2. **Code execution and file creation** 활성화
+3. **Network egress** 옵션에서 "Package managers + specific domains" 선택
+4. 다음 도메인 추가:
+   - `law.go.kr` 또는 `*.law.go.kr` (국가법령정보센터)
+   - `open.assembly.go.kr` 또는 `*.assembly.go.kr` (열린국회정보)
+
+> **참고**: 도메인이 허용되지 않으면 "mismatched tag" XML 파싱 에러 또는 403 에러가 발생합니다.
+
 ## 외부 참고 사이트
 
 | 사이트 | URL | 용도 |
 |--------|-----|------|
 | 국가법령정보센터 | law.go.kr | 법령/판례 원문 |
+| 열린국회정보 | open.assembly.go.kr | 국회 의안정보 API |
+| 의안정보시스템 | likms.assembly.go.kr | 의안 상세, 심사경과 |
 | 법제처 | moleg.go.kr | 법령해석, 입법예고 |
 | 대법원 종합법률정보 | glaw.scourt.go.kr | 판례 원문 |
 | 헌법재판소 | ccourt.go.kr | 헌재 결정문 |
