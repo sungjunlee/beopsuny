@@ -809,7 +809,8 @@ def search_related_admin_rules(law_name: str, display: int = 10):
                     'enforce_date': enforce_date,
                     'ministry': ministry,
                 })
-        except Exception:
+        except (urllib.error.HTTPError, urllib.error.URLError, ET.ParseError):
+            # API 오류 시 다음 검색어로 계속
             continue
 
     if all_results:
