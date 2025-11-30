@@ -34,8 +34,8 @@ export BEOPSUNY_ASSEMBLY_API_KEY="your_api_key"
 #### 방법 B: 설정 파일 (로컬 개발용)
 
 ```bash
-cd .claude/skills/beopsuny/config
-cp settings.yaml.example settings.yaml
+cp .claude/skills/beopsuny/config/settings.yaml.example \
+   .claude/skills/beopsuny/config/settings.yaml
 # settings.yaml에 API 키 입력
 ```
 
@@ -153,7 +153,8 @@ git clone https://github.com/your-username/your-repo.git
 │   │   ├── parse_law.py         # 법령 파싱
 │   │   └── gen_link.py          # 링크 생성
 │   ├── config/
-│   │   └── settings.yaml.example
+│   │   ├── settings.yaml.example  # API 키 설정 템플릿
+│   │   └── law_index.yaml         # 법령 ID 인덱스 (자동 업데이트)
 │   └── data/
 │       ├── raw/                 # 다운로드된 XML
 │       ├── parsed/              # 파싱된 Markdown

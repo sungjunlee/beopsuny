@@ -26,6 +26,7 @@ import yaml
 SCRIPT_DIR = Path(__file__).parent
 SKILL_DIR = SCRIPT_DIR.parent
 CONFIG_PATH = SKILL_DIR / "config" / "settings.yaml"
+LAW_INDEX_PATH = SKILL_DIR / "config" / "law_index.yaml"
 DATA_RAW_DIR = SKILL_DIR / "data" / "raw"
 DATA_PARSED_DIR = SKILL_DIR / "data" / "parsed"
 
@@ -35,8 +36,9 @@ BASE_URL = "http://www.law.go.kr/DRF"
 # 환경변수 이름
 ENV_OC_CODE = "BEOPSUNY_OC_CODE"
 
-# 설정 캐시
+# 캐시
 _config_cache = None
+_law_index_cache = None
 
 
 def _load_config_file():
@@ -52,6 +54,21 @@ def _load_config_file():
         _config_cache = {}
 
     return _config_cache
+
+
+def _load_law_index():
+    """법령 인덱스 파일 로드 (캐싱)"""
+    global _law_index_cache
+    if _law_index_cache is not None:
+        return _law_index_cache
+
+    if LAW_INDEX_PATH.exists():
+        with open(LAW_INDEX_PATH, 'r', encoding='utf-8') as f:
+            _law_index_cache = yaml.safe_load(f) or {}
+    else:
+        _law_index_cache = {}
+
+    return _law_index_cache
 
 
 def load_config():
@@ -79,9 +96,9 @@ def load_config():
 
 
 def get_major_law_id(name: str) -> str | None:
-    """주요 법령의 ID를 설정 파일에서 조회"""
-    config = _load_config_file()
-    major_laws = config.get('major_laws', {})
+    """주요 법령의 ID를 law_index.yaml에서 조회"""
+    law_index = _load_law_index()
+    major_laws = law_index.get('major_laws', {})
 
     # 정확한 이름으로 먼저 검색
     if name in major_laws:

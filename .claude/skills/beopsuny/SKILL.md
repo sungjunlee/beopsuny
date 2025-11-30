@@ -205,12 +205,22 @@ https://bigcase.ai (빅케이스 - 유사 판례 추천)
 - `data/parsed/` - 파싱된 Markdown 파일
 - `data/bills/` - 국회 의안 검색 결과
 
-## API 설정
+## 설정 파일
+
+### 파일 구조
+```
+config/
+├── settings.yaml.example  # 사용자 설정 템플릿 (API 키)
+├── settings.yaml          # 사용자 설정 (.gitignore)
+└── law_index.yaml         # 법령/행정규칙 ID 인덱스 (읽기전용)
+```
+
+### API 키 설정
 
 API 키는 **환경변수** 또는 **설정 파일**로 설정할 수 있습니다.
 환경변수가 설정되어 있으면 설정 파일보다 우선합니다.
 
-### 방법 1: 환경변수 (권장 - Claude Code Web, Codex Cloud)
+#### 방법 1: 환경변수 (권장 - Claude Code Web, Codex Cloud)
 
 ```bash
 # 국가법령정보 OC 코드 (필수)
@@ -223,17 +233,11 @@ export BEOPSUNY_ASSEMBLY_API_KEY="your_api_key"
 **Claude Code Web / Codex Cloud 설정:**
 - Settings에서 Environment Variables 섹션에 위 환경변수 추가
 
-### 방법 2: 설정 파일 (로컬 개발용)
+#### 방법 2: 설정 파일 (로컬 개발용)
 
-`config/settings.yaml` 파일 생성:
-```yaml
-# 국가법령정보 OC 코드 (필수)
-# https://open.law.go.kr 에서 발급 (가입 이메일의 @ 앞부분)
-oc_code: "your_oc_code"
-
-# 열린국회정보 API 키 (선택)
-# https://open.assembly.go.kr 에서 발급
-assembly_api_key: "your_api_key"
+```bash
+cp config/settings.yaml.example config/settings.yaml
+# settings.yaml에 API 키 입력
 ```
 
 ### API 키 발급처
@@ -242,6 +246,13 @@ assembly_api_key: "your_api_key"
 |-----|--------|------|
 | 국가법령정보 OC 코드 | https://open.law.go.kr | 법령/판례 검색 (필수) |
 | 열린국회정보 API 키 | https://open.assembly.go.kr | 국회 의안 조회 (선택) |
+
+### 법령 인덱스 (law_index.yaml)
+
+`config/law_index.yaml`에는 100개+ 주요 법령과 행정규칙 ID가 포함되어 있습니다.
+- API 검색 없이 직접 조회 가능
+- `git pull`로 자동 업데이트
+- 사용자가 수정할 필요 없음
 
 ## Skill 폴더 위치
 
