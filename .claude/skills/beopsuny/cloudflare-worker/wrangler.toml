@@ -1,0 +1,17 @@
+# Cloudflare Worker 설정
+# 배포: npx wrangler deploy
+
+name = "beopsuny-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# 무료 플랜: 100,000 requests/day
+# 유료 플랜: 10,000,000 requests/month ($5)
+
+# 선택적 API 키 (보안용)
+# [vars]
+# API_KEY = "your-secret-key"
+
+# 환경별 설정
+# [env.production]
+# name = "beopsuny-proxy-prod"

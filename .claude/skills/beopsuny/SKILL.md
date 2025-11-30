@@ -411,6 +411,43 @@ Claude Desktop/Web에서 이 skill을 사용하려면 **네트워크 egress 설�
 
 > **참고**: 도메인이 허용되지 않으면 "mismatched tag" XML 파싱 에러 또는 403 에러가 발생합니다.
 
+## 해외 접근 설정 (프록시)
+
+한국 정부 API는 해외 IP를 차단합니다. Claude Code Web, Codex Web 등 해외 환경에서는 프록시 설정이 필요합니다.
+
+### 프록시 상태 확인
+
+```bash
+python scripts/proxy_utils.py
+# 또는
+python scripts/fetch_policy.py proxy-status
+```
+
+### 옵션 1: Cloudflare Workers (무료, 권장)
+
+```bash
+# 1. Worker 배포 (cloudflare-worker/ 참조)
+# 2. 환경변수 설정
+export BEOPSUNY_PROXY_TYPE=cloudflare
+export BEOPSUNY_PROXY_URL='https://your-worker.workers.dev'
+```
+
+### 옵션 2: Bright Data (유료)
+
+```bash
+export BEOPSUNY_PROXY_TYPE=brightdata
+export BEOPSUNY_BRIGHTDATA_USERNAME='your-username'
+export BEOPSUNY_BRIGHTDATA_PASSWORD='your-password'
+```
+
+### 자동 감지
+
+프록시가 설정되면 스크립트가 자동으로:
+1. 현재 IP 위치 감지
+2. 해외이면 프록시 사용, 국내이면 직접 접근
+
+자세한 설정: `docs/PROXY_SETUP.md`
+
 ## 외부 참고 사이트
 
 | 사이트 | URL | 용도 |

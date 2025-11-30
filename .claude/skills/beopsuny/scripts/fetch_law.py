@@ -22,6 +22,13 @@ from pathlib import Path
 
 import yaml
 
+# 프록시 유틸리티 (해외 접근 지원)
+try:
+    from proxy_utils import fetch_with_proxy, is_overseas, get_geo_status
+    HAS_PROXY_UTILS = True
+except ImportError:
+    HAS_PROXY_UTILS = False
+
 # 스크립트 위치 기준으로 경로 설정
 SCRIPT_DIR = Path(__file__).parent
 SKILL_DIR = SCRIPT_DIR.parent
@@ -114,10 +121,37 @@ def get_major_law_id(name: str) -> str | None:
 
 
 def api_request(endpoint: str, params: dict) -> ET.Element:
-    """API 요청 및 XML 파싱"""
+    """API 요청 및 XML 파싱 (해외 실행 시 자동 프록시)"""
     url = f"{BASE_URL}/{endpoint}?{urllib.parse.urlencode(params)}"
 
     try:
+        # 프록시 유틸리티 사용 가능하면 자동 프록시 처리
+        if HAS_PROXY_UTILS:
+            try:
+                content = fetch_with_proxy(url, timeout=30)
+            except ValueError as e:
+                # 프록시 미설정 시 경고 후 직접 시도
+                if is_overseas():
+                    print(f"Warning: {e}", file=sys.stderr)
+                    print("Attempting direct connection...", file=sys.stderr)
+                content = None
+
+            if content is not None:
+                # HTML 응답 감지
+                if content.strip().startswith('<!DOCTYPE') or content.strip().startswith('<html'):
+                    print(f"Error: API returned HTML instead of XML.", file=sys.stderr)
+                    print(f"This usually means overseas access is blocked.", file=sys.stderr)
+                    print(f"", file=sys.stderr)
+                    print(f"Solution: Configure proxy for overseas access:", file=sys.stderr)
+                    print(f"  export BEOPSUNY_PROXY_TYPE=cloudflare", file=sys.stderr)
+                    print(f"  export BEOPSUNY_PROXY_URL='https://your-worker.workers.dev'", file=sys.stderr)
+                    print(f"", file=sys.stderr)
+                    print(f"See: docs/PROXY_SETUP.md", file=sys.stderr)
+                    sys.exit(1)
+
+                return ET.fromstring(content)
+
+        # 직접 접근 (국내 또는 프록시 미설정)
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=30) as response:
             content = response.read().decode('utf-8')
@@ -125,10 +159,15 @@ def api_request(endpoint: str, params: dict) -> ET.Element:
             # HTML 응답 감지 (API 오류 시 HTML 반환됨)
             if content.strip().startswith('<!DOCTYPE') or content.strip().startswith('<html'):
                 print(f"Error: API returned HTML instead of XML.", file=sys.stderr)
-                print(f"This usually means the domain is not in the network allowlist.", file=sys.stderr)
-                print(f"", file=sys.stderr)
-                print(f"Solution: Add 'law.go.kr' to allowed domains in:", file=sys.stderr)
-                print(f"  Claude Desktop: Settings > Capabilities > Network egress", file=sys.stderr)
+                if HAS_PROXY_UTILS and is_overseas():
+                    print(f"Overseas access is blocked. Configure proxy:", file=sys.stderr)
+                    print(f"  export BEOPSUNY_PROXY_TYPE=cloudflare", file=sys.stderr)
+                    print(f"  export BEOPSUNY_PROXY_URL='https://your-worker.workers.dev'", file=sys.stderr)
+                else:
+                    print(f"This usually means the domain is not in the network allowlist.", file=sys.stderr)
+                    print(f"", file=sys.stderr)
+                    print(f"Solution: Add 'law.go.kr' to allowed domains in:", file=sys.stderr)
+                    print(f"  Claude Desktop: Settings > Capabilities > Network egress", file=sys.stderr)
                 print(f"", file=sys.stderr)
                 print(f"URL: {url}", file=sys.stderr)
                 sys.exit(1)
@@ -138,9 +177,13 @@ def api_request(endpoint: str, params: dict) -> ET.Element:
         print(f"Error: HTTP {e.code} - {e.reason}", file=sys.stderr)
         if e.code == 403:
             print(f"", file=sys.stderr)
-            print(f"403 Forbidden usually means network access is blocked.", file=sys.stderr)
-            print(f"Add 'law.go.kr' to allowed domains in:", file=sys.stderr)
-            print(f"  Claude Desktop: Settings > Capabilities > Network egress", file=sys.stderr)
+            if HAS_PROXY_UTILS and is_overseas():
+                print(f"403 Forbidden - overseas access is blocked.", file=sys.stderr)
+                print(f"Configure proxy: export BEOPSUNY_PROXY_URL='https://...'", file=sys.stderr)
+            else:
+                print(f"403 Forbidden usually means network access is blocked.", file=sys.stderr)
+                print(f"Add 'law.go.kr' to allowed domains in:", file=sys.stderr)
+                print(f"  Claude Desktop: Settings > Capabilities > Network egress", file=sys.stderr)
         sys.exit(1)
     except urllib.error.URLError as e:
         print(f"Error: API request failed - {e}", file=sys.stderr)
