@@ -525,6 +525,18 @@ def fetch_law_by_id(law_id: str, save: bool = True, force: bool = False, target:
 
     root = api_request('lawService.do', params)
 
+    # API 오류 응답 감지 (일치하는 데이터 없음)
+    error_text = root.text.strip() if root.text else ''
+    if '일치하는' in error_text and '없습니다' in error_text:
+        target_names = {
+            'law': '법령', 'admrul': '행정규칙', 'ordin': '자치법규',
+            'prec': '판례', 'expc': '법령해석례', 'detc': '헌재결정례'
+        }
+        target_name = target_names.get(target, target)
+        print(f"\n❌ 오류: ID '{law_id}'에 해당하는 {target_name}을(를) 찾을 수 없습니다.", file=sys.stderr)
+        print(f"   API 응답: {error_text}", file=sys.stderr)
+        sys.exit(1)
+
     # target 타입에 따라 다른 필드 추출 및 저장
     if target == 'admrul':
         # 행정규칙
