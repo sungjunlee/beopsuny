@@ -133,30 +133,34 @@ def build_zip(oc_code: str, assembly_api_key: str, output_path: Path, gateway_co
         sys.exit(1)
 
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Claude Code Chat에서 skill 이름으로 폴더가 생성되므로
+        # zip 내부는 루트 레벨에서 시작해야 함
+        # 예: /mnt/skills/user/beopsuny/config/settings.yaml
+
         # SKILL.md
         skill_md = skill_dir / "SKILL.md"
         if skill_md.exists():
-            zf.write(skill_md, "beopsuny/SKILL.md")
+            zf.write(skill_md, "SKILL.md")
 
         # config/settings.yaml (API 키 및 게이트웨이 설정 주입)
         settings_content = create_settings_yaml(oc_code, assembly_api_key, gateway_config)
-        zf.writestr("beopsuny/config/settings.yaml", settings_content)
+        zf.writestr("config/settings.yaml", settings_content)
 
         # config/law_index.yaml (법령 인덱스)
         law_index = skill_dir / "config" / "law_index.yaml"
         if law_index.exists():
-            zf.write(law_index, "beopsuny/config/law_index.yaml")
+            zf.write(law_index, "config/law_index.yaml")
 
         # scripts/*.py
         scripts_dir = skill_dir / "scripts"
         if scripts_dir.exists():
             for py_file in scripts_dir.glob("*.py"):
-                zf.write(py_file, f"beopsuny/scripts/{py_file.name}")
+                zf.write(py_file, f"scripts/{py_file.name}")
 
         # data 디렉토리 구조 (빈 디렉토리용 .gitkeep)
-        zf.writestr("beopsuny/data/raw/.gitkeep", "")
-        zf.writestr("beopsuny/data/parsed/.gitkeep", "")
-        zf.writestr("beopsuny/data/bills/.gitkeep", "")
+        zf.writestr("data/raw/.gitkeep", "")
+        zf.writestr("data/parsed/.gitkeep", "")
+        zf.writestr("data/bills/.gitkeep", "")
 
     print()
     print(f"✓ 스킬 zip 파일이 생성되었습니다: {output_path}")
