@@ -47,48 +47,52 @@ def get_api_keys() -> tuple[str, str, dict]:
 
     print()
 
-    # 3. 프록시 설정 (해외 접근용)
-    print("[3/3] 프록시 설정 (해외 접근용)")
+    # 3. 게이트웨이 설정 (해외 접근용)
+    print("[3/3] 게이트웨이 설정 (해외 접근용)")
     print("한국 정부 API는 해외 IP를 차단합니다.")
-    print("Claude Desktop이 해외 서버에서 실행될 경우 프록시가 필요합니다.")
+    print("Claude Desktop이 해외 서버에서 실행될 경우 게이트웨이가 필요합니다.")
     print()
+    print("cors-anywhere 기반 게이트웨이 URL과 API 키를 입력하세요.")
     print("(선택사항 - 국내에서만 사용하면 Enter로 건너뛰기)")
     print()
 
-    proxy_config = {}
-    proxy_url = input("프록시 URL (예: http://user:pass@host:port): ").strip()
+    gateway_config = {}
+    gateway_url = input("게이트웨이 URL (예: https://your-gateway.example.com): ").strip()
 
-    if proxy_url:
-        proxy_config = {
-            "type": "http",
-            "url": proxy_url
+    if gateway_url:
+        gateway_api_key = input("게이트웨이 API 키 (선택, 인증 필요 시): ").strip()
+        gateway_config = {
+            "url": gateway_url,
+            "api_key": gateway_api_key if gateway_api_key else None
         }
-        print("프록시 설정이 추가됩니다.")
+        print("게이트웨이 설정이 추가됩니다.")
 
-    return oc_code, assembly_api_key, proxy_config
+    return oc_code, assembly_api_key, gateway_config
 
 
-def create_settings_yaml(oc_code: str, assembly_api_key: str = "", proxy_config: dict = None) -> str:
+def create_settings_yaml(oc_code: str, assembly_api_key: str = "", gateway_config: dict = None) -> str:
     """settings.yaml 내용을 생성합니다."""
     assembly_line = f'assembly_api_key: "{assembly_api_key}"' if assembly_api_key else '# assembly_api_key: ""  # 열린국회정보 API 키 (https://open.assembly.go.kr)'
 
-    # 프록시 설정 생성
-    if proxy_config and proxy_config.get("url"):
-        proxy_section = f'''
-# 프록시 설정 (해외 접근용)
+    # 게이트웨이 설정 생성
+    if gateway_config and gateway_config.get("url"):
+        api_key_line = f'  api_key: "{gateway_config.get("api_key")}"' if gateway_config.get("api_key") else '  # api_key: ""  # 게이트웨이 API 키 (인증 필요 시)'
+        gateway_section = f'''
+# 게이트웨이 설정 (해외 접근용)
 # 한국 정부 API는 해외 IP를 차단합니다.
-proxy:
-  type: "{proxy_config.get('type', 'http')}"
-  url: "{proxy_config.get('url')}"
+# cors-anywhere 기반 게이트웨이를 통해 접근합니다.
+gateway:
+  url: "{gateway_config.get('url')}"
+{api_key_line}
 '''
     else:
-        proxy_section = '''
-# 프록시 설정 (해외 접근용)
+        gateway_section = '''
+# 게이트웨이 설정 (해외 접근용)
 # 한국 정부 API는 해외 IP를 차단합니다.
-# Claude Desktop이 해외 서버에서 실행될 경우 프록시 설정이 필요합니다.
-# proxy:
-#   type: "http"  # http, cloudflare, brightdata
-#   url: "http://user:pass@host:port"
+# cors-anywhere 기반 게이트웨이를 통해 접근합니다.
+# gateway:
+#   url: "https://your-gateway.example.com"
+#   api_key: "your-api-key"  # 선택
 '''
 
     return f'''# Korean Law API Configuration
@@ -116,10 +120,10 @@ targets:
   admrul: "행정규칙"
   expc: "법령해석례"
   detc: "헌재결정례"
-{proxy_section}'''
+{gateway_section}'''
 
 
-def build_zip(oc_code: str, assembly_api_key: str, output_path: Path, proxy_config: dict = None) -> None:
+def build_zip(oc_code: str, assembly_api_key: str, output_path: Path, gateway_config: dict = None) -> None:
     """스킬 zip 파일을 생성합니다."""
     script_dir = Path(__file__).parent
     skill_dir = script_dir / ".claude" / "skills" / "beopsuny"
@@ -134,9 +138,14 @@ def build_zip(oc_code: str, assembly_api_key: str, output_path: Path, proxy_conf
         if skill_md.exists():
             zf.write(skill_md, "beopsuny/SKILL.md")
 
-        # config/settings.yaml (API 키 및 프록시 설정 주입)
-        settings_content = create_settings_yaml(oc_code, assembly_api_key, proxy_config)
+        # config/settings.yaml (API 키 및 게이트웨이 설정 주입)
+        settings_content = create_settings_yaml(oc_code, assembly_api_key, gateway_config)
         zf.writestr("beopsuny/config/settings.yaml", settings_content)
+
+        # config/law_index.yaml (법령 인덱스)
+        law_index = skill_dir / "config" / "law_index.yaml"
+        if law_index.exists():
+            zf.write(law_index, "beopsuny/config/law_index.yaml")
 
         # scripts/*.py
         scripts_dir = skill_dir / "scripts"
@@ -158,8 +167,8 @@ def build_zip(oc_code: str, assembly_api_key: str, output_path: Path, proxy_conf
     print(f"3. 생성된 {output_path.name} 파일 선택")
     print()
     print("⚠️  주의: 이 zip 파일에는 개인 OC 코드가 포함되어 있습니다.")
-    if proxy_config and proxy_config.get("url"):
-        print("⚠️  주의: 프록시 인증 정보도 포함되어 있습니다.")
+    if gateway_config and gateway_config.get("api_key"):
+        print("⚠️  주의: 게이트웨이 API 키도 포함되어 있습니다.")
     print("    다른 사람과 공유하지 마세요!")
 
 
@@ -167,7 +176,8 @@ def main():
     # 명령줄 인자로 API 키 받기
     oc_code = None
     assembly_api_key = None
-    proxy_url = None
+    gateway_url = None
+    gateway_api_key = None
 
     args = sys.argv[1:]
     i = 0
@@ -185,11 +195,17 @@ def main():
         elif arg.startswith("--assembly-key="):
             assembly_api_key = arg.split("=", 1)[1]
             i += 1
-        elif arg in ("--proxy", "-p") and i + 1 < len(args):
-            proxy_url = args[i + 1]
+        elif arg in ("--gateway-url", "-g") and i + 1 < len(args):
+            gateway_url = args[i + 1]
             i += 2
-        elif arg.startswith("--proxy="):
-            proxy_url = arg.split("=", 1)[1]
+        elif arg.startswith("--gateway-url="):
+            gateway_url = arg.split("=", 1)[1]
+            i += 1
+        elif arg in ("--gateway-key", "-k") and i + 1 < len(args):
+            gateway_api_key = args[i + 1]
+            i += 2
+        elif arg.startswith("--gateway-key="):
+            gateway_api_key = arg.split("=", 1)[1]
             i += 1
         elif arg in ("--help", "-h"):
             print("사용법: python build_skill.py [옵션]")
@@ -197,26 +213,27 @@ def main():
             print("옵션:")
             print("  -o, --oc-code=CODE       국가법령정보 OC 코드 (필수)")
             print("  -a, --assembly-key=KEY   열린국회정보 API 키 (선택)")
-            print("  -p, --proxy=URL          프록시 URL (선택, 해외 접근용)")
-            print("                           예: http://user:pass@host:port")
+            print("  -g, --gateway-url=URL    게이트웨이 URL (선택, 해외 접근용)")
+            print("                           예: https://your-gateway.example.com")
+            print("  -k, --gateway-key=KEY    게이트웨이 API 키 (선택, 인증 필요 시)")
             print("  -h, --help               도움말 표시")
             print()
             print("예시:")
             print("  python build_skill.py")
             print("  python build_skill.py --oc-code=myoccode")
-            print("  python build_skill.py -o myoccode -p http://user:pass@host:8080")
+            print("  python build_skill.py -o myoccode -g https://my-gateway.com -k myapikey")
             sys.exit(0)
         else:
             i += 1
 
-    # 프록시 설정 구성
-    proxy_config = {}
-    if proxy_url:
-        proxy_config = {"type": "http", "url": proxy_url}
+    # 게이트웨이 설정 구성
+    gateway_config = {}
+    if gateway_url:
+        gateway_config = {"url": gateway_url, "api_key": gateway_api_key}
 
     # 인자 없으면 대화형으로 입력
     if not oc_code:
-        oc_code, assembly_api_key, proxy_config = get_api_keys()
+        oc_code, assembly_api_key, gateway_config = get_api_keys()
 
     # 출력 경로
     output_path = Path(__file__).parent / "beopsuny-skill.zip"
@@ -228,7 +245,7 @@ def main():
             print("취소되었습니다.")
             sys.exit(0)
 
-    build_zip(oc_code, assembly_api_key or "", output_path, proxy_config)
+    build_zip(oc_code, assembly_api_key or "", output_path, gateway_config)
 
 
 if __name__ == "__main__":
