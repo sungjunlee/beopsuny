@@ -61,13 +61,22 @@ fetch_law.py cases "손해배상"
 fetch_law.py cases "해고" --court 대법원 --from 20240101
 ```
 
-### 법령 다운로드
+### 법령/규칙 다운로드
 ```bash
 fetch_law.py fetch --name "민법"
 fetch_law.py fetch --name "민법" --with-decree  # 시행령 포함
-fetch_law.py fetch --case "2022다12345"         # 판례
-fetch_law.py fetch --id 2100000259318 --type admrul  # 행정규칙 (ID로)
+fetch_law.py fetch --case "2022다12345"         # 판례 (사건번호로)
+fetch_law.py fetch --id <ID> --type <타입>      # ID로 다운로드
 ```
+
+**타입별 다운로드 예시:**
+| 타입 | 명령어 예시 |
+|------|------------|
+| 행정규칙 | `fetch --id 2100000259318 --type admrul` |
+| 자치법규 | `fetch --id 2084665 --type ordin` |
+| 법령해석례 | `fetch --id 311537 --type expc` |
+| 헌재결정례 | `fetch --id 134954 --type detc` |
+| 판례 | `fetch --id 237875 --type prec` |
 
 ### 개정 확인
 ```bash
