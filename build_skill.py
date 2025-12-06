@@ -182,6 +182,7 @@ def main():
     assembly_api_key = None
     gateway_url = None
     gateway_api_key = None
+    force_overwrite = False
 
     args = sys.argv[1:]
     i = 0
@@ -211,6 +212,9 @@ def main():
         elif arg.startswith("--gateway-key="):
             gateway_api_key = arg.split("=", 1)[1]
             i += 1
+        elif arg in ("--force", "-f"):
+            force_overwrite = True
+            i += 1
         elif arg in ("--help", "-h"):
             print("사용법: python build_skill.py [옵션]")
             print()
@@ -220,12 +224,14 @@ def main():
             print("  -g, --gateway-url=URL    게이트웨이 URL (선택, 해외 접근용)")
             print("                           예: https://your-gateway.example.com")
             print("  -k, --gateway-key=KEY    게이트웨이 API 키 (선택, 인증 필요 시)")
+            print("  -f, --force              기존 파일 덮어쓰기 (확인 없이)")
             print("  -h, --help               도움말 표시")
             print()
             print("예시:")
             print("  python build_skill.py")
             print("  python build_skill.py --oc-code=myoccode")
             print("  python build_skill.py -o myoccode -g https://my-gateway.com -k myapikey")
+            print("  python build_skill.py -o myoccode -f  # 확인 없이 덮어쓰기")
             sys.exit(0)
         else:
             i += 1
@@ -243,7 +249,7 @@ def main():
     output_path = Path(__file__).parent / "beopsuny-skill.zip"
 
     # 기존 파일 확인
-    if output_path.exists():
+    if output_path.exists() and not force_overwrite:
         response = input(f"{output_path.name} 파일이 이미 존재합니다. 덮어쓸까요? (y/N): ")
         if response.lower() != 'y':
             print("취소되었습니다.")
