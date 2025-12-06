@@ -52,22 +52,10 @@ def _load_config() -> dict:
     if _config_cache is not None:
         return _config_cache
 
-    import sys
-    print(f"[DEBUG] CONFIG_PATH: {CONFIG_PATH}", file=sys.stderr)
-    print(f"[DEBUG] CONFIG_PATH.exists(): {CONFIG_PATH.exists()}", file=sys.stderr)
-
     if CONFIG_PATH.exists():
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            content = f.read()
-            print(f"[DEBUG] Config file content ({len(content)} bytes):", file=sys.stderr)
-            print(content[:500], file=sys.stderr)  # 처음 500자만 출력
-            _config_cache = yaml.safe_load(content) or {}
-            print(f"[DEBUG] Parsed config keys: {list(_config_cache.keys())}", file=sys.stderr)
-            print(f"[DEBUG] gateway config: {_config_cache.get('gateway')}", file=sys.stderr)
+            _config_cache = yaml.safe_load(f) or {}
     else:
-        print(f"[DEBUG] Config not found!", file=sys.stderr)
-        print(f"[DEBUG] SCRIPT_DIR: {SCRIPT_DIR}", file=sys.stderr)
-        print(f"[DEBUG] __file__: {__file__}", file=sys.stderr)
         _config_cache = {}
 
     return _config_cache
