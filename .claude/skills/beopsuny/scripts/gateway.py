@@ -116,6 +116,7 @@ def fetch_with_gateway(
     url: str,
     timeout: int = 30,
     headers: Optional[dict] = None,
+    max_retries: int = 3,
 ) -> str:
     """cors-anywhere 게이트웨이를 통해 URL 가져오기
 
@@ -126,6 +127,7 @@ def fetch_with_gateway(
         url: 요청할 URL
         timeout: 타임아웃 (초)
         headers: 추가 헤더
+        max_retries: 5xx 에러 시 최대 재시도 횟수
 
     Returns:
         응답 본문 (문자열)
@@ -134,6 +136,9 @@ def fetch_with_gateway(
         ValueError: 게이트웨이 미설정 시
         RuntimeError: 요청 실패 시
     """
+    import time
+    import sys
+
     config = get_gateway_config()
     gateway_url = config.get("url")
 
@@ -159,36 +164,61 @@ def fetch_with_gateway(
     if headers:
         req_headers.update(headers)
 
-    req = urllib.request.Request(full_url, headers=req_headers)
+    last_error = None
+    for attempt in range(max_retries):
+        req = urllib.request.Request(full_url, headers=req_headers)
 
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return response.read().decode("utf-8")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                return response.read().decode("utf-8")
 
-    except urllib.error.HTTPError as e:
-        if e.code == 401:
-            raise RuntimeError(
-                "Gateway authentication failed (401).\n"
-                f"Check your API key: {ENV_GATEWAY_API_KEY}"
-            ) from e
-        elif e.code == 403:
-            config = get_gateway_config()
-            if not config.get("api_key"):
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
                 raise RuntimeError(
-                    "Gateway access forbidden (403).\n"
-                    "API key is required but not configured.\n"
-                    f"Set {ENV_GATEWAY_API_KEY} environment variable or add api_key to settings.yaml"
+                    "Gateway authentication failed (401).\n"
+                    f"Check your API key: {ENV_GATEWAY_API_KEY}"
                 ) from e
-            else:
-                raise RuntimeError(
-                    "Gateway access forbidden (403).\n"
-                    "The API key may be invalid or the gateway blocked this request."
-                ) from e
-        raise RuntimeError(f"Gateway HTTP error: {e.code} {e.reason}") from e
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Gateway URL error: {e.reason}") from e
-    except socket.timeout:
-        raise RuntimeError(f"Gateway timeout after {timeout}s") from None
+            elif e.code == 403:
+                config = get_gateway_config()
+                if not config.get("api_key"):
+                    raise RuntimeError(
+                        "Gateway access forbidden (403).\n"
+                        "API key is required but not configured.\n"
+                        f"Set {ENV_GATEWAY_API_KEY} environment variable or add api_key to settings.yaml"
+                    ) from e
+                else:
+                    raise RuntimeError(
+                        "Gateway access forbidden (403).\n"
+                        "The API key may be invalid or the gateway blocked this request."
+                    ) from e
+            elif e.code >= 500 and attempt < max_retries - 1:
+                # 5xx 에러는 재시도 (502, 503, 504 등)
+                wait_time = (attempt + 1) * 2  # 2초, 4초, 6초...
+                print(f"Gateway error {e.code}, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})", file=sys.stderr)
+                time.sleep(wait_time)
+                last_error = e
+                continue
+            raise RuntimeError(f"Gateway HTTP error: {e.code} {e.reason}") from e
+        except urllib.error.URLError as e:
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 2
+                print(f"Gateway URL error, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})", file=sys.stderr)
+                time.sleep(wait_time)
+                last_error = e
+                continue
+            raise RuntimeError(f"Gateway URL error: {e.reason}") from e
+        except socket.timeout:
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 2
+                print(f"Gateway timeout, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})", file=sys.stderr)
+                time.sleep(wait_time)
+                last_error = socket.timeout(f"Gateway timeout after {timeout}s")
+                continue
+            raise RuntimeError(f"Gateway timeout after {timeout}s") from None
+
+    # 모든 재시도 실패
+    if last_error:
+        raise RuntimeError(f"Gateway failed after {max_retries} attempts: {last_error}") from last_error
 
 
 def fetch_direct(
