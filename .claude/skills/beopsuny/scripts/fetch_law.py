@@ -512,16 +512,20 @@ def fetch_law_by_id(law_id: str, save: bool = True, force: bool = False, target:
 
     oc = load_config()
 
+    # 자치법규는 MST 파라미터 사용 (다른 타입은 ID)
     params = {
         'OC': oc,
         'target': target,
         'type': 'XML',
-        'ID': law_id,
     }
+    if target == 'ordin':
+        params['MST'] = law_id
+    else:
+        params['ID'] = law_id
 
     root = api_request('lawService.do', params)
 
-    # target 타입에 따라 다른 필드 추출
+    # target 타입에 따라 다른 필드 추출 및 저장
     if target == 'admrul':
         # 행정규칙
         item_name = root.findtext('.//행정규칙명', '') or root.findtext('.//행정규칙명한글', '')
@@ -542,6 +546,131 @@ def fetch_law_by_id(law_id: str, save: bool = True, force: bool = False, target:
             tree = ET.ElementTree(root)
             tree.write(filepath, encoding='utf-8', xml_declaration=True)
             print(f"\n저장됨: {filepath}")
+
+    elif target == 'ordin':
+        # 자치법규
+        item_name = root.findtext('.//자치법규명', '')
+        promul_date = root.findtext('.//공포일자', '')
+        enforce_date = root.findtext('.//시행일자', '')
+        local_gov = root.findtext('.//지자체기관명', '')
+        ordin_type = root.findtext('.//자치법규종류', '')
+
+        # 자치법규종류 코드를 한글로 변환
+        ordin_type_map = {'C0001': '조례', 'C0002': '규칙'}
+        ordin_type_name = ordin_type_map.get(ordin_type, ordin_type)
+
+        print(f"\n=== [{ordin_type_name}] {item_name} ===")
+        print(f"지자체: {local_gov}")
+        print(f"공포일: {promul_date} | 시행일: {enforce_date}")
+
+        if save:
+            safe_name = "".join(c for c in item_name if c.isalnum() or c in (' ', '_', '-')).strip()
+            filename = f"{safe_name}_{law_id}.xml"
+            filepath = DATA_RAW_DIR / "ordin" / filename
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            tree = ET.ElementTree(root)
+            tree.write(filepath, encoding='utf-8', xml_declaration=True)
+            print(f"\n저장됨: {filepath}")
+
+    elif target == 'expc':
+        # 법령해석례
+        item_name = root.findtext('.//안건명', '')
+        case_number = root.findtext('.//안건번호', '')
+        response_date = root.findtext('.//해석일자', '')
+        request_org = root.findtext('.//질의기관명', '')
+        response_org = root.findtext('.//해석기관명', '')
+
+        print(f"\n=== 법령해석례: {item_name} ===")
+        print(f"안건번호: {case_number}")
+        print(f"질의: {request_org} → 해석: {response_org}")
+        print(f"해석일: {response_date}")
+
+        # 질의요지/회답 출력
+        question = root.findtext('.//질의요지', '')
+        answer = root.findtext('.//회답', '')
+        if question:
+            print(f"\n【질의요지】")
+            print(question[:500] + "..." if len(question) > 500 else question)
+        if answer:
+            print(f"\n【회답】")
+            print(answer[:500] + "..." if len(answer) > 500 else answer)
+
+        if save:
+            safe_name = "".join(c for c in case_number if c.isalnum() or c in (' ', '_', '-')).strip()
+            filename = f"{safe_name}_{law_id}.xml"
+            filepath = DATA_RAW_DIR / "expc" / filename
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            tree = ET.ElementTree(root)
+            tree.write(filepath, encoding='utf-8', xml_declaration=True)
+            print(f"\n저장됨: {filepath}")
+
+    elif target == 'detc':
+        # 헌재결정례
+        item_name = root.findtext('.//사건명', '')
+        case_number = root.findtext('.//사건번호', '')
+        decision_date = root.findtext('.//종국일자', '')
+        case_type = root.findtext('.//사건종류명', '')
+
+        print(f"\n=== 헌재결정례: {item_name} ===")
+        print(f"사건번호: {case_number}")
+        print(f"사건종류: {case_type}")
+        print(f"종국일: {decision_date}")
+
+        # 판시사항/결정요지 출력
+        points = root.findtext('.//판시사항', '')
+        summary = root.findtext('.//결정요지', '')
+        if points:
+            print(f"\n【판시사항】")
+            points_clean = re.sub(r'<[^>]+>', '', points)
+            print(points_clean[:500] + "..." if len(points_clean) > 500 else points_clean)
+        if summary:
+            print(f"\n【결정요지】")
+            summary_clean = re.sub(r'<[^>]+>', '', summary)
+            print(summary_clean[:500] + "..." if len(summary_clean) > 500 else summary_clean)
+
+        if save:
+            safe_name = "".join(c for c in case_number if c.isalnum() or c in (' ', '_', '-')).strip()
+            filename = f"{safe_name}_{law_id}.xml"
+            filepath = DATA_RAW_DIR / "detc" / filename
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            tree = ET.ElementTree(root)
+            tree.write(filepath, encoding='utf-8', xml_declaration=True)
+            print(f"\n저장됨: {filepath}")
+
+    elif target == 'prec':
+        # 판례 (fetch_case_by_id와 동일한 로직)
+        item_name = root.findtext('.//사건명', '')
+        case_number = root.findtext('.//사건번호', '')
+        court_name = root.findtext('.//법원명', '')
+        judge_date = root.findtext('.//선고일자', '')
+
+        print(f"\n=== {item_name} ===")
+        print(f"사건번호: {case_number}")
+        print(f"법원: {court_name} | 선고일: {format_court_date(judge_date)}")
+
+        # 판시사항/판결요지 출력
+        points = root.findtext('.//판시사항', '')
+        summary = root.findtext('.//판결요지', '')
+        if points:
+            print(f"\n【판시사항】")
+            points_clean = re.sub(r'<br\s*/?>', '\n', points)
+            points_clean = re.sub(r'<[^>]+>', '', points_clean)
+            print(points_clean[:500] + "..." if len(points_clean) > 500 else points_clean)
+        if summary:
+            print(f"\n【판결요지】")
+            summary_clean = re.sub(r'<br\s*/?>', '\n', summary)
+            summary_clean = re.sub(r'<[^>]+>', '', summary_clean)
+            print(summary_clean[:500] + "..." if len(summary_clean) > 500 else summary_clean)
+
+        if save:
+            safe_name = "".join(c for c in case_number if c.isalnum() or c in (' ', '_', '-')).strip()
+            filename = f"{safe_name}_{law_id}.xml"
+            filepath = DATA_RAW_DIR / "prec" / filename
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            tree = ET.ElementTree(root)
+            tree.write(filepath, encoding='utf-8', xml_declaration=True)
+            print(f"\n저장됨: {filepath}")
+
     else:
         # 법령 (기본)
         item_name = root.findtext('.//법령명_한글', '') or root.findtext('.//법령명', '')
